@@ -14,9 +14,9 @@
  2) create parameters to control wehere this split happens DONE
  3) prove that splitting into 3 bands produces no audible artifacs DONE
  4) create audio parameters for the 3 compressor bands. these need to live on each band instance DONE
- 5) add 2 remaining compressors.
- 6) add ability to mute/solo/bypass individual compressors
- 7) add input and output gain to offset chanesgs in output level
+ 5) add 2 remaining compressors. DONE
+ 6) add ability to mute/solo/bypass individual compressors DONE
+ 7) add input and output gain to offset chanesgs in output level DONE
  8) clean up anything that needs cleaning up
  */
 
@@ -48,6 +48,17 @@ enum Names
     Bypassed_Low_Band,
     Bypassed_Mid_Band,
     Bypassed_High_Band,
+    
+    Mute_Low_Band,
+    Mute_Mid_Band,
+    Mute_High_Band,
+    
+    Solo_Low_Band,
+    Solo_Mid_Band,
+    Solo_High_Band,
+    
+    Gain_In,
+    Gain_Out,
 };
 
 inline const std::map<Names, juce::String>& GetParams() // map doesnt get created until GetParams() is called
@@ -71,6 +82,17 @@ inline const std::map<Names, juce::String>& GetParams() // map doesnt get create
         {Bypassed_Low_Band, "Bypassed Low Band"},
         {Bypassed_Mid_Band, "Bypassed Mid Band"},
         {Bypassed_High_Band, "Bypassed High Band"},
+        
+        {Mute_Low_Band, "Mute Low Band"},
+        {Mute_Mid_Band, "Mute Mid Band"},
+        {Mute_High_Band, "Mute High Band"},
+        
+        {Solo_Low_Band, "Solo Low Band"},
+        {Solo_Mid_Band, "Solo Mid Band"},
+        {Solo_High_Band, "Solo High Band"},
+        
+        {Gain_In, "Gain In"},
+        {Gain_Out, "Gain Out"},
     };
     return params;
 }
@@ -83,6 +105,9 @@ struct CompressorBand
     juce::AudioParameterFloat* threshold { nullptr };
     juce::AudioParameterChoice* ratio { nullptr };
     juce::AudioParameterBool* bypassed { nullptr };
+    juce::AudioParameterBool* mute { nullptr };
+    juce::AudioParameterBool* solo { nullptr };
+
     
     void prepare(const juce::dsp::ProcessSpec& spec)
     {
@@ -178,7 +203,21 @@ private:
     
     std::array<juce::AudioBuffer<float>, 3> filterBuffers;
     
+    juce::dsp::Gain<float> inputGain, outputGain;
+    juce::AudioParameterFloat* inputGainParam { nullptr };
+    juce::AudioParameterFloat* outputGainParam { nullptr };
     
+    template<typename T, typename U>
+    void applyGain(T& buffer, U& gain)
+    {
+        auto block = juce::dsp::AudioBlock<float>(buffer);
+        auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+        gain.process(ctx);
+    }
+    
+    void updateState();
+    
+    void splitBands(const juce::AudioBuffer<float>& inputBuffer);
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleMBCompAudioProcessor)
 };
